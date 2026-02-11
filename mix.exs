@@ -20,6 +20,7 @@ defmodule ExRmtfs.MixProject do
 
   def application do
     [
+      mod: {ExRmtfs.Application, []},
       extra_applications: [:logger]
     ]
   end
