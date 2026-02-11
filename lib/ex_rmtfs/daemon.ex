@@ -1,4 +1,4 @@
-defmodule Rmtfs.Daemon do
+defmodule ExRmtfs.Daemon do
   @moduledoc """
   Manages the `rmtfs` daemon process.
 
@@ -32,7 +32,7 @@ defmodule Rmtfs.Daemon do
     args = Keyword.get(opts, :rmtfs_args, @default_args)
     env = Keyword.get(opts, :rmtfs_env, @default_env)
 
-    Logger.info("[Rmtfs.Daemon] Starting rmtfs with args: #{args}")
+    Logger.info("[ExRmtfs.Daemon] Starting rmtfs with args: #{args}")
 
     {:ok, pid} =
       MuonTrap.Daemon.start_link("rmtfs", String.split(args),
@@ -42,7 +42,7 @@ defmodule Rmtfs.Daemon do
         log_prefix: "rmtfs: "
       )
 
-    Logger.info("[Rmtfs.Daemon] rmtfs started")
+    Logger.info("[ExRmtfs.Daemon] rmtfs started")
 
     {:ok, %{daemon_pid: pid}}
   end

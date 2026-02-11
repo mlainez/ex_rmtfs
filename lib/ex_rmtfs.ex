@@ -1,4 +1,4 @@
-defmodule Rmtfs do
+defmodule ExRmtfs do
   @moduledoc """
   Manages udevd and rmtfs daemons for Qualcomm remoteproc on Nerves devices.
 
@@ -8,14 +8,14 @@ defmodule Rmtfs do
 
   ## Usage
 
-  Add `Rmtfs` to your application's supervision tree:
+  Add `ExRmtfs` to your application's supervision tree:
 
       defmodule MyApp.Application do
         use Application
 
         def start(_type, _args) do
           children = [
-            {Rmtfs, []}
+            {ExRmtfs, []}
           ]
 
           Supervisor.start_link(children, strategy: :one_for_one)
@@ -34,7 +34,7 @@ defmodule Rmtfs do
 
   ## Example with custom options
 
-      {Rmtfs, rmtfs_args: "-P -r", udevd_settle_timeout: 60}
+      {ExRmtfs, rmtfs_args: "-P -r", udevd_settle_timeout: 60}
   """
 
   use Supervisor
@@ -47,7 +47,7 @@ defmodule Rmtfs do
           | {:udevd_settle_timeout, pos_integer()}
 
   @doc """
-  Starts the Rmtfs supervisor.
+  Starts the ExRmtfs supervisor.
 
   See the module documentation for available options.
   """
@@ -59,8 +59,8 @@ defmodule Rmtfs do
   @impl Supervisor
   def init(opts) do
     children = [
-      {Rmtfs.Udevd, opts},
-      {Rmtfs.Daemon, opts}
+      {ExRmtfs.Udevd, opts},
+      {ExRmtfs.Daemon, opts}
     ]
 
     Supervisor.init(children, strategy: :rest_for_one)

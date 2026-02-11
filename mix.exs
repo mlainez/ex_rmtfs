@@ -1,12 +1,12 @@
-defmodule Rmtfs.MixProject do
+defmodule ExRmtfs.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/mlainez/rmtfs"
+  @source_url "https://github.com/mlainez/ex_rmtfs"
 
   def project do
     [
-      app: :rmtfs,
+      app: :ex_rmtfs,
       version: @version,
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,

@@ -1,4 +1,4 @@
-defmodule Rmtfs.Udevd do
+defmodule ExRmtfs.Udevd do
   @moduledoc """
   Manages the `udevd` daemon and triggers device enumeration.
 
@@ -44,7 +44,7 @@ defmodule Rmtfs.Udevd do
     env = Keyword.get(opts, :udevd_env, @default_env)
     settle_timeout = Keyword.get(opts, :udevd_settle_timeout, @default_settle_timeout)
 
-    Logger.info("[Rmtfs.Udevd] Starting udevd")
+    Logger.info("[ExRmtfs.Udevd] Starting udevd")
 
     {:ok, pid} =
       MuonTrap.Daemon.start_link("udevd", String.split(args),
@@ -54,13 +54,13 @@ defmodule Rmtfs.Udevd do
         log_prefix: "udevd: "
       )
 
-    Logger.info("[Rmtfs.Udevd] Triggering device enumeration")
+    Logger.info("[ExRmtfs.Udevd] Triggering device enumeration")
 
     {_, 0} = udevadm("trigger --type=subsystems --action=add")
     {_, 0} = udevadm("trigger --type=devices --action=add")
     {_, 0} = udevadm("settle --timeout=#{settle_timeout}")
 
-    Logger.info("[Rmtfs.Udevd] Device enumeration complete")
+    Logger.info("[ExRmtfs.Udevd] Device enumeration complete")
 
     {:ok, %{daemon_pid: pid}}
   end
