@@ -75,7 +75,3 @@ Example with custom options:
 ```elixir
 {ExRmtfs, rmtfs_args: "-P -r", udevd_settle_timeout: 60}
 ```
-
-## License
-
-Apache-2.0
