@@ -8,7 +8,7 @@ defmodule ExRmtfs.MixProject do
     [
       app: :ex_rmtfs,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
@@ -30,12 +30,12 @@ defmodule ExRmtfs.MixProject do
       {:muontrap, "~> 1.0"},
       {:credo, "~> 1.5", only: :dev, runtime: false},
       {:dialyxir, "~> 1.4", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.23", only: :docs, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]
   end
 
   defp description do
-    "Manages udevd and rmtfs daemons for Qualcomm remoteproc on Nerves devices"
+    "Runs udevd and the Qualcomm rmtfs daemon (modem EFS over QRTR) on Nerves devices"
   end
 
   defp dialyzer do
@@ -56,7 +56,7 @@ defmodule ExRmtfs.MixProject do
   defp package do
     [
       files: ["lib", "mix.exs", "README.md", "LICENSE"],
-      licenses: ["Apache-2.0"],
+      licenses: ["MIT"],
       links: %{"GitHub" => @source_url}
     ]
   end
