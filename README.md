@@ -1,35 +1,30 @@
 # ExRmtfs
 
-Manages `udevd` and `rmtfs` daemons for Qualcomm's remoteproc subsystem on
-[Nerves](https://nerves-project.org/) devices (e.g., the Fairphone 2).
+> ### ⚠️ Very early work — built for a workshop, not for production
+>
+> Written for the **Goatmire Elixir workshop** on running Nerves on Fairphone 3 hardware. There are no stability guarantees and APIs will change without notice.
 
-The `rmtfs` daemon provides a remote filesystem service that gives the Qualcomm
-modem co-processor access to shared memory regions for modem firmware and EFS
-storage. This library handles the full startup sequence: launching `udevd`,
-triggering device enumeration, waiting for settle, and then starting `rmtfs` --
-all under an OTP supervisor.
+Runs `udevd` and Qualcomm's [`rmtfs`](https://github.com/linux-msm/rmtfs)
+daemon on [Nerves](https://nerves-project.org/) devices (built for the
+Fairphone 3).
 
-## Architecture
+`rmtfs` serves the modem's EFS partitions (`modemst1`, `modemst2`, `fsg`,
+`fsc`) over QRTR. With the default `-P` flag it finds those partitions via
+`/dev/disk/by-partlabel/`, and on the Fairphone 3 kernel QRTR and the modem
+remoteproc driver are modules that udev autoloads. So this library starts
+`udevd`, triggers device enumeration, waits for `udevadm settle`, and only
+then starts `rmtfs`.
 
-```
-ExRmtfs (Supervisor, :rest_for_one)
-  |
-  +-- ExRmtfs.Udevd (GenServer)
-  |     |-- Starts udevd via MuonTrap.Daemon
-  |     |-- Runs: udevadm trigger --type=subsystems --action=add
-  |     |-- Runs: udevadm trigger --type=devices --action=add
-  |     +-- Runs: udevadm settle --timeout=<settle_timeout>
-  |
-  +-- ExRmtfs.Daemon (GenServer)
-        +-- Starts rmtfs via MuonTrap.Daemon
-```
+## Requirements
 
-The `:rest_for_one` strategy ensures that if `udevd` crashes, the `rmtfs`
-daemon is also restarted, since it depends on the device nodes being present.
+On the target (all provided by `nerves_system_fp3`):
+
+- `udevd` and `udevadm` (Buildroot `eudev`, selected via
+  `BR2_ROOTFS_DEVICE_CREATION_DYNAMIC_EUDEV`)
+- `rmtfs` (`packages/rmtfs`, installs `/usr/bin/rmtfs` and its udev rules)
+- a kernel with QRTR and the Qualcomm remoteproc drivers
 
 ## Installation
-
-Add `ex_rmtfs` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -41,37 +36,86 @@ end
 
 ## Usage
 
-The application starts automatically via its OTP application callback. If you
-prefer manual control, add `ExRmtfs` to your supervision tree:
+The `:ex_rmtfs` application starts everything automatically, using options
+from the application environment. Nothing else is needed:
 
 ```elixir
-defmodule MyApp.Application do
-  use Application
+# config/target.exs (all keys optional; defaults shown)
+config :ex_rmtfs,
+  rmtfs_args: "-P -r -s",
+  udevd_settle_timeout: 30
+```
 
-  def start(_type, _args) do
-    children = [
-      {ExRmtfs, []}
-    ]
+To supervise it yourself instead, turn the automatic start off and add
+`{ExRmtfs, opts}` to your own tree. Only one instance can run at a time
+(the processes have fixed names).
 
-    Supervisor.start_link(children, strategy: :one_for_one)
-  end
-end
+```elixir
+config :ex_rmtfs, start: false
+```
+
+```elixir
+children = [
+  {ExRmtfs, rmtfs_args: "-P -r -s"}
+]
 ```
 
 ### Options
 
-Options are passed as a keyword list:
+The same keys work in `config :ex_rmtfs` and as `{ExRmtfs, opts}`.
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `:udevd_args` | `String.t()` | `""` | Extra arguments for the `udevd` daemon |
-| `:udevd_env` | `[{String.t(), String.t()}]` | `[]` | Environment variables for `udevd` |
-| `:rmtfs_args` | `String.t()` | `"-P -r -s"` | Arguments for the `rmtfs` daemon |
-| `:rmtfs_env` | `[{String.t(), String.t()}]` | `[]` | Environment variables for `rmtfs` |
-| `:udevd_settle_timeout` | `pos_integer()` | `30` | Timeout in seconds for `udevadm settle` |
+| Key | Default | Description |
+|---|---|---|
+| `:start` | `true` | App env only. `false` disables the automatic start |
+| `:udevd_path` | `"udevd"` | udevd executable (looked up on `$PATH`) |
+| `:udevd_args` | `""` | Extra udevd arguments (string or list) |
+| `:udevd_env` | `[]` | udevd environment, `[{"KEY", "VALUE"}]` |
+| `:udevadm_path` | `"udevadm"` | udevadm executable |
+| `:udev_control_path` | `"/run/udev/control"` | Socket whose appearance means udevd is listening |
+| `:udevd_ready_timeout` | `10_000` | ms to wait for that socket before triggering anyway |
+| `:udevd_settle_timeout` | `30` | Seconds passed to `udevadm settle --timeout` |
+| `:rmtfs_path` | `"rmtfs"` | rmtfs executable |
+| `:rmtfs_args` | `"-P -r -s"` | rmtfs arguments (string or list) |
+| `:rmtfs_env` | `[]` | rmtfs environment, `[{"KEY", "VALUE"}]` |
+| `:min_backoff_ms` | `1_000` | First restart delay for a missing or exited daemon |
+| `:max_backoff_ms` | `60_000` | Maximum restart delay |
 
-Example with custom options:
+rmtfs flags (from the rmtfs source): `-P` use raw EFS partitions, `-r`
+read-only (never write to storage), `-s` sync with the modem remoteproc
+(start/stop it along with rmtfs), `-v` verbose, `-o DIR` storage root.
 
-```elixir
-{ExRmtfs, rmtfs_args: "-P -r", udevd_settle_timeout: 60}
+## Process tree
+
 ```
+ExRmtfs (Supervisor, :rest_for_one)
+  ExRmtfs.Udevd.Daemon   udevd under MuonTrap
+  ExRmtfs.Udevd          waits for /run/udev/control, then
+                         udevadm trigger --type=subsystems --action=add
+                         udevadm trigger --type=devices --action=add
+                         udevadm settle --timeout=<udevd_settle_timeout>
+  ExRmtfs.Rmtfs.Daemon   rmtfs under MuonTrap, started once ExRmtfs.Udevd
+                         has finished
+```
+
+Boot safety: a missing executable, a failing `udevadm` or a daemon that
+exits (with any status) is logged and retried with exponential backoff.
+None of these make the supervisor or the application exit, so they cannot
+reboot a device running with `start_permanent`. `udevadm` output goes to
+Logger at `:debug`, `udevd` output at `:debug` and `rmtfs` output at `:info`.
+
+Enumeration runs once when `ExRmtfs.Udevd` starts; it is not repeated when
+`udevd` is restarted.
+
+## Status
+
+The code is tested on the host with fake executables. Behaviour on the
+Fairphone 3 has not been re-verified since the restart/backoff and
+configuration changes.
+
+## Toolchain
+
+Built and tested with Erlang/OTP 29.1.1 and Elixir 1.20.4, matching the official Nerves systems (see `.tool-versions`).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
