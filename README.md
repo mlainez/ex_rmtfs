@@ -1,9 +1,5 @@
 # ExRmtfs
 
-> ### ⚠️ Very early work — built for a workshop, not for production
->
-> Written for the **Goatmire Elixir workshop** on running Nerves on Fairphone 3 hardware. There are no stability guarantees and APIs will change without notice.
-
 Runs `udevd` and Qualcomm's [`rmtfs`](https://github.com/linux-msm/rmtfs)
 daemon on [Nerves](https://nerves-project.org/) devices (built for the
 Fairphone 3).
